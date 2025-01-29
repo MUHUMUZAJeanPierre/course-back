@@ -1,8 +1,19 @@
 const SubModule = require('../models/CourseSubModuleSchema');
+const cloudinary = require('../utils/cloudinary'); // Ensure this path is correct
+const fs = require('fs');
 
 // Create a new SubModule
 const createSubModule = async (req, res) => {
     try {
+
+        if (!req.body.title) {
+            return res.status(400).json({
+                status: "error",
+                message: "Title is required."
+            });
+        }
+
+        // Check if a SubModule with the same title exists
         const existingSubModule = await SubModule.findOne({ title: req.body.title });
         if (existingSubModule) {
             return res.status(400).json({
@@ -11,11 +22,16 @@ const createSubModule = async (req, res) => {
             });
         }
 
-        const imagePath = req.file ? req.file.path : null;
+        // Upload image to Cloudinary if file exists
+        let imageUrl = null;
+        if (req.file) {
+            const cloudinaryResult = await cloudinary.uploader.upload(req.file.path);
+            imageUrl = cloudinaryResult.secure_url;
+        }
 
         const subModule = new SubModule({
             title: req.body.title,
-            image: imagePath,
+            image: imageUrl || req.body.image,
             lessons: req.body.lessons || []
         });
 
@@ -33,6 +49,7 @@ const createSubModule = async (req, res) => {
         });
     }
 };
+
 
 // Get all SubModules
 const getAllSubModules = async (req, res) => {

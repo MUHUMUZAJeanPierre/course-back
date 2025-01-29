@@ -1,49 +1,54 @@
 // Import required modules
 const mongoose = require('mongoose');
-const SubModule =  require('../models/CourseSubModuleSchema');
-const CourseModule =  require('../models/CourseModule');
-const QuizSchema = require('../models/QuizSchema')
-
+const SubModule = require('../models/CourseSubModuleSchema');
+const CourseModule = require('../models/CourseModule');
+const QuizSchema = require('../models/QuizSchema');
+const cloudinary = require('../utils/cloudinary');
+const multer = require('multer');
+const fs = require('fs');
+const upload = require('../config/multer');
 
 // Create a new CourseModule
 const createCourseModule = async (req, res) => {
-  try {
-      // Check if a CourseModule with the same title already exists
-      const existingCourseModule = await CourseModule.findOne({ title: req.body.title });
-      if (existingCourseModule) {
-          return res.status(400).json({
-              status: 'error',
-              message: 'A CourseModule with this title already exists'
-          });
-      }
+    try {
 
-      // Handle image upload
-      const imagePath = req.file ? req.file.path : null;
+        if (!req.body.title) {
+            return res.status(400).json({
+                status: "error",
+                message: "Title is required."
+            });
+        }
 
-      // Create a new CourseModule
-      const courseModule = new CourseModule({
-          title: req.body.title,
-          image: req.body.image || imagePath, // Fixed re.body to req.body
-          description: req.body.description,
-          submodules: req.body.submodules || [],
-          quiz: req.body.quiz || null
-      });
+        // Upload image to Cloudinary if file exists
+        let imageUrl = null;
+        if (req.file) {
+            const cloudinaryResult = await cloudinary.uploader.upload(req.file.path);
+            imageUrl = cloudinaryResult.secure_url;
+        }
 
-      // Save the CourseModule to the database
-      const savedCourseModule = await courseModule.save();
-      res.status(201).json({
-          status: 'success',
-          message: 'CourseModule created successfully',
-          data: savedCourseModule
-      });
-  } catch (err) {
-      res.status(500).json({
-          status: 'error',
-          message: 'Failed to create CourseModule',
-          error: err.message
-      });
-  }
+        const courseModule = new CourseModule({
+            title: req.body.title,
+            image: imageUrl || req.body.image,
+            description: req.body.description,
+            submodules: req.body.submodules || [],
+            quiz: req.body.quiz || null
+        });
+
+        const savedCourseModule = await courseModule.save();
+        res.status(201).json({
+            status: "success",
+            message: "CourseModule created successfully",
+            data: savedCourseModule
+        });
+    } catch (err) {
+        res.status(500).json({
+            status: "error",
+            message: "Failed to create CourseModule",
+            error: err.message
+        });
+    }
 };
+
 
 // Get all CourseModules
 const getAllCourseModules = async (req, res) => {
@@ -92,14 +97,17 @@ const getCourseModuleById = async (req, res) => {
 const updateCourseModule = async (req, res) => {
     try {
         const { id } = req.params;
-        const imagePath = req.file ? req.file.path : req.body.image; // Use uploaded image or existing one
+        let imageUrl = req.body.image;
+
+        // Upload new image if file exists
+        if (req.file) {
+            const cloudinaryResult = await cloudinary.uploader.upload(req.file.path);
+            imageUrl = cloudinaryResult.secure_url;
+        }
 
         const updatedCourseModule = await CourseModule.findByIdAndUpdate(
             id,
-            {
-                ...req.body,
-                image: imagePath
-            },
+            { ...req.body, image: imageUrl },
             { new: true }
         ).populate('submodules');
 
