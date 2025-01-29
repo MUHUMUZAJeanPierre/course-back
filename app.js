@@ -9,19 +9,17 @@ const ModuleRouter = require('./routes/ModuleRoutes');
 const CourseRouter = require('./routes/courseRoutes');
 const userRouter = require('./routes/userRoutes');
 
+// Load environment variables
 dotenv.config();
 
+// Initialize Express
 const app = express();
+
+// Middleware for body parsing
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Routes
-app.use('/', userRouter);
-app.use('/', SubModuleRouter);
-app.use('/', ModuleRouter);
-app.use('/', CourseRouter);
-
-db.connect();
-
+// Middleware for session and authentication
 app.use(
     session({
         secret: process.env.SESSION_SECRET,
@@ -32,8 +30,23 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.use(authRoutes);
+// Debug Middleware (optional)
+app.use((req, res, next) => {
+    console.log(`Request received: ${req.method} ${req.url}`);
+    next();
+});
 
+// Database connection
+db.connect();
+
+// Define Routes
+app.use('/', userRouter);
+app.use('/', SubModuleRouter);
+app.use('/', ModuleRouter);
+app.use('/', CourseRouter);
+app.use('/', authRoutes);
+
+// Start Server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

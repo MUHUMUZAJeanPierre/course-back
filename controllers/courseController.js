@@ -3,45 +3,98 @@ const mongoose = require('mongoose');
 const SubModule = require('../models/CourseSubModuleSchema');
 const CourseModule = require('../models/CourseModule');
 const Course = require('../models/Course');
+const cloudinary = require('../utils/cloudinary');
+const multer = require("multer");
+const fs = require("fs");
 
+
+const storage = multer.diskStorage({
+    filename: function (req, file, cb) {
+      cb(null, file.originalname);
+    }
+  });
+  
+  // Init upload
+  const upload = multer({
+    storage: storage,
+    limits: { fileSize: 3000000 } // 3MB
+  }).single("image");
+  
 
 // Create a new Course
+
 const createCourse = async (req, res) => {
-    try {
-        const existingCourse = await Course.findOne({ title: req.body.title });
-        if (existingCourse) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'A Course with this title already exists'
-            });
+    // Handle the file upload
+    upload(req, res, async (err) => {
+        if (err) {
+            return res.status(400).json({ message: err.message });
         }
 
-        const imagePath = req.file ? req.file.path : null;
+        try {
+            const { title, description, instructor, modules, enrolledStudents, category, level } = req.body;
 
-        const course = new Course({
-            title: req.body.title,
-            image: req.body.image || imagePath,
-            description: req.body.description,
-            instructor: req.body.instructor,
-            modules: req.body.modules || [],
-            enrolledStudents: req.body.enrolledStudents || [],
-            category: req.body.category || '',
-            level: req.body.level || 'Beginner'
-        });
+            // Check for required fields
+            if (!title || !description || !instructor || !req.file) {
+                return res.status(400).json({ 
+                    status: 'error', 
+                    message: 'Title, description, instructor, and image are required.' 
+                });
+            }
 
-        const savedCourse = await course.save();
-        res.status(201).json({
-            status: 'success',
-            message: 'Course created successfully',
-            data: savedCourse
-        });
-    } catch (err) {
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to create Course',
-            error: err.message
-        });
-    }
+            // Check if the course already exists
+            const existingCourse = await Course.findOne({ title });
+            if (existingCourse) {
+                // Remove the uploaded file if the course exists
+                if (req.file && req.file.path) {
+                    fs.unlinkSync(req.file.path);
+                }
+                return res.status(400).json({
+                    status: 'error',
+                    message: 'A Course with this title already exists'
+                });
+            }
+
+            // Upload the image to Cloudinary
+            const cloudinaryResult = await cloudinary.uploader.upload(req.file.path);
+
+            // Create a new course entry
+            const course = new Course({
+                title,
+                image: cloudinaryResult.secure_url, // Use the Cloudinary URL
+                description,
+                instructor,
+                modules: modules || [],
+                enrolledStudents: enrolledStudents || [],
+                category: category || '',
+                level: level || 'Beginner',
+            });
+
+            // Save the course to the database
+            const savedCourse = await course.save();
+
+            // Remove the local file after successful upload
+            fs.unlinkSync(req.file.path);
+
+            res.status(201).json({
+                status: 'success',
+                message: 'Course created successfully',
+                data: savedCourse,
+            });
+        } catch (err) {
+            console.error('Error creating Course:', err.message);
+
+            // Remove the file if an error occurs
+            if (req.file && req.file.path) {
+                fs.unlinkSync(req.file.path);
+            }
+
+            res.status(500).json({
+                status: 'error',
+                message: 'Failed to create Course',
+                error: err.message,
+            });
+        }
+    });
 };
 
 // Get all Courses
