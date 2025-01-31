@@ -12,7 +12,11 @@ const upload = multer({ storage: multer.memoryStorage() });
 // Get all SubModules
 const getAllSubModules = async (req, res) => {
     try {
-        const subModules = await SubModule.find();
+        const subModules = await SubModule.find().populate({
+            path: 'lessons.resources',
+            model: 'File' // Ensures that it populates from the File model
+        });
+
         res.status(200).json({
             status: 'success',
             message: 'SubModules retrieved successfully',
@@ -31,13 +35,18 @@ const getAllSubModules = async (req, res) => {
 const getSubModuleById = async (req, res) => {
     try {
         const { id } = req.params;
-        const subModule = await SubModule.findById(id);
+        const subModule = await SubModule.findById(id).populate({
+            path: 'lessons.resources',
+            model: 'File'
+        });
+
         if (!subModule) {
             return res.status(404).json({
                 status: 'error',
                 message: 'SubModule not found'
             });
         }
+
         res.status(200).json({
             status: 'success',
             message: 'SubModule retrieved successfully',
