@@ -1,12 +1,17 @@
 const express = require('express');
 const SubModuleRouter = express.Router();
-const {createSubModule, getAllSubModules, getSubModuleById, updateSubModule,deleteSubModule} = require('../controllers/SubmoduleController');
+// const { getAllSubModules, getSubModuleById, updateSubModule, deleteSubModule } = require('../controllers/SubmoduleController');
 const upload = require('../config/multer');
+const SubModuleR = require('../controllers/SubmoduleMainControler');
+const uploadSubModuleRouter = require('../controllers/SubmoduleController'); // Import the upload route
 
-SubModuleRouter.post('/api/submodules', upload.single('image'), createSubModule);
-SubModuleRouter.get('/api/submodules', getAllSubModules);
-SubModuleRouter.get('/api/submodules/:id', getSubModuleById);
-SubModuleRouter.put('/api/submodules/:id', updateSubModule);
-SubModuleRouter.delete('/api/submodules/:id', deleteSubModule);
+// Existing routes
+SubModuleRouter.get('/api/submodules', SubModuleR.getAllSubModules);
+SubModuleRouter.get('/api/submodules/:id', SubModuleR.getSubModuleById);
+SubModuleRouter.put('/api/submodules/:id', SubModuleR.updateSubModule);
+SubModuleRouter.delete('/api/submodules/:id', SubModuleR.deleteSubModule);
+
+// New upload route
+SubModuleRouter.use('/api/submodules', uploadSubModuleRouter); // Mount the upload route
 
 module.exports = SubModuleRouter;

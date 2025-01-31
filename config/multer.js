@@ -5,19 +5,21 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 // Configure Cloudinary storage
 const storage = new CloudinaryStorage({
     cloudinary,
-    params: {
-        folder: 'uploads', // Cloudinary folder name
-        format: async (req, file) => 'png', // Change format if needed
-        public_id: (req, file) => `${Date.now()}-${file.originalname}`
-    },
+    params: async (req, file) => {
+        return {
+            folder: 'uploads',
+            format: file.mimetype === 'application/pdf' ? undefined : 'png', // Only images are converted to PNG
+            public_id: `${Date.now()}-${file.originalname}`
+        };
+    }
 });
 
-// File filter to allow only images
+// File filter to allow images and PDFs
 const fileFilter = (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
         cb(null, true);
     } else {
-        cb(new Error('Only image files are allowed'), false);
+        cb(new Error('Only image and PDF files are allowed'), false);
     }
 };
 

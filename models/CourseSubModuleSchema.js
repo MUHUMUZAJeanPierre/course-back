@@ -1,4 +1,12 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
+
+const FileSchema = new mongoose.Schema({
+  originalName: { type: String, required: true },
+  storedName: { type: String, required: true },
+  slides: { type: [String], required: true }, // Array of slide URLs
+  totalSlides: { type: Number, required: true }, // Number of slides
+  path: { type: String, required: true }, // Cloudinary folder path
+});
 
 const SubModuleSchema = new mongoose.Schema({
     title: { 
@@ -23,12 +31,15 @@ const SubModuleSchema = new mongoose.Schema({
                 type: String 
             },
             resources: [{ 
-                type: String 
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "File"
             }]
         }
     ]
 });
 
-// Create and export the model
-const SubModule = mongoose.model('SubModule', SubModuleSchema);
-module.exports = SubModule;
+// Create and export the models
+const File = mongoose.model("File", FileSchema);
+const SubModule = mongoose.model("SubModule", SubModuleSchema);
+
+module.exports = { File, SubModule };

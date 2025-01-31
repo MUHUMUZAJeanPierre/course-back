@@ -1,220 +1,160 @@
-const SubModule = require('../models/CourseSubModuleSchema');
-const cloudinary = require('../utils/cloudinary'); // Ensure this path is correct
-const fs = require('fs');
+const express = require("express");
+const multer = require("multer");
+const cloudinary = require("cloudinary").v2;
+const streamifier = require("streamifier");
+const { SubModule, File } = require("../models/CourseSubModuleSchema");
+const gm = require("gm").subClass({ imageMagick: true });
 
-// Create a new SubModule
-const createSubModule = async (req, res) => {
-    try {
+const router = express.Router();
+const dotenv = require("dotenv");
+dotenv.config();
 
-        if (!req.body.title) {
-            return res.status(400).json({
-                status: "error",
-                message: "Title is required."
+// Multer configuration for file uploads (memory storage)
+const upload = multer({ storage: multer.memoryStorage() });
+
+
+// Upload image to Cloudinary
+const uploadImageToCloudinary = (buffer, folder, fileName) => {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: folder,
+        public_id: fileName,
+        resource_type: "image",
+      },
+      (err, result) => {
+        if (err) reject(err);
+        else resolve(result.secure_url);
+      }
+    );
+    streamifier.createReadStream(buffer).pipe(uploadStream);
+  });
+};
+
+// Upload slide to Cloudinary
+const uploadSlideToCloudinary = (buffer, folder, fileName) => {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: folder,
+        public_id: fileName,
+        resource_type: "image",
+      },
+      (err, result) => {
+        if (err) reject(err);
+        else resolve(result.secure_url);
+      }
+    );
+    streamifier.createReadStream(buffer).pipe(uploadStream);
+  });
+};
+
+// Extract slides from PDF and upload to Cloudinary
+const processPdfSlides = (pdfBuffer, folder) => {
+  return new Promise((resolve, reject) => {
+    gm(pdfBuffer).toBuffer("PDF", async (err, buffer) => {
+      if (err) return reject(err);
+
+      const slideUrls = [];
+      gm(buffer).identify("%p ", async (err, pages) => {
+        if (err) return reject(err);
+
+        const totalSlides = pages.split(" ").filter((p) => p).length;
+
+        for (let i = 0; i < totalSlides; i++) {
+          gm(buffer, `[${i}]`)
+            .toBuffer("PNG", async (err, slideBuffer) => {
+              if (err) return reject(err);
+
+              const slideUrl = await uploadSlideToCloudinary(
+                slideBuffer,
+                folder,
+                `slide${i + 1}`
+              );
+              slideUrls.push(slideUrl);
+
+              if (slideUrls.length === totalSlides) {
+                resolve(slideUrls);
+              }
             });
         }
+      });
+    });
+  });
+};
 
-        // Check if a SubModule with the same title exists
-        const existingSubModule = await SubModule.findOne({ title: req.body.title });
-        if (existingSubModule) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'A SubModule with this title already exists'
-            });
-        }
+// Unified API to Upload PDF, SubModule Image & Create SubModule
+router.post("/", upload.fields([{ name: "file" }, { name: "image" }]), async (req, res) => {
+  const { file, image } = req.files;
+  const { title, lessons } = req.body;
 
-        // Upload image to Cloudinary if file exists
-        let imageUrl = null;
-        if (req.file) {
-            const cloudinaryResult = await cloudinary.uploader.upload(req.file.path);
-            imageUrl = cloudinaryResult.secure_url;
-        }
+  if (!file || !file[0] || !file[0].mimetype.includes("pdf")) {
+    return res.status(400).json({ error: "Please upload a valid PDF file" });
+  }
 
-        const subModule = new SubModule({
-            title: req.body.title,
-            image: imageUrl || req.body.image,
-            lessons: req.body.lessons || []
-        });
+  const pdfFile = file[0]; // PDF file
+  const cloudinaryFolder = `pdf_app/${pdfFile.originalname.split(".")[0]}`;
 
-        const savedSubModule = await subModule.save();
-        res.status(201).json({
-            status: 'success',
-            message: 'SubModule created successfully',
-            data: savedSubModule
-        });
-    } catch (err) {
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to create SubModule',
-            error: err.message
-        });
+  try {
+    // Process and upload slides
+    const slideUrls = await processPdfSlides(pdfFile.buffer, cloudinaryFolder);
+
+    // Save file metadata to database
+    const newFile = new File({
+      originalName: pdfFile.originalname,
+      storedName: `${Date.now()}-${pdfFile.originalname}`,
+      slides: slideUrls,
+      totalSlides: slideUrls.length,
+      path: cloudinaryFolder,
+    });
+
+    await newFile.save();
+
+    // Check if SubModule with same title exists
+    const existingSubModule = await SubModule.findOne({ title });
+    if (existingSubModule) {
+      return res.status(400).json({
+        status: "error",
+        message: "A SubModule with this title already exists",
+      });
     }
-};
 
-
-// Get all SubModules
-const getAllSubModules = async (req, res) => {
-    try {
-        const subModules = await SubModule.find();
-        res.status(200).json({
-            status: 'success',
-            message: 'SubModules retrieved successfully',
-            data: subModules
-        });
-    } catch (err) {
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to retrieve SubModules',
-            error: err.message
-        });
+    // Upload the SubModule image if provided
+    let imageUrl = null;
+    if (image && image[0]) {
+      imageUrl = await uploadImageToCloudinary(image[0].buffer, "submodule_images", `submodule-${Date.now()}`);
     }
-};
 
-// Get a single SubModule by ID
-const getSubModuleById = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const subModule = await SubModule.findById(id);
-        if (!subModule) {
-            return res.status(404).json({
-                status: 'error',
-                message: 'SubModule not found'
-            });
-        }
-        res.status(200).json({
-            status: 'success',
-            message: 'SubModule retrieved successfully',
-            data: subModule
-        });
-    } catch (err) {
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to retrieve SubModule',
-            error: err.message
-        });
-    }
-};
+    // Parse lessons and attach file as a resource
+    const parsedLessons = JSON.parse(lessons).map((lesson) => ({
+      title: lesson.title,
+      description: lesson.description,
+      videoUrl: lesson.videoUrl || null,
+      resources: [newFile._id], // Attach file as a resource
+    }));
 
-// Update a SubModule by ID
-const updateSubModule = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const imagePath = req.file ? req.file.path : req.body.image; // Use uploaded image or existing one
+    // Create and save the new SubModule
+    const newSubModule = new SubModule({
+      title,
+      image: imageUrl, // Save image URL
+      lessons: parsedLessons,
+    });
 
-        const updatedSubModule = await SubModule.findByIdAndUpdate(
-            id,
-            {
-                ...req.body,
-                image: imagePath
-            },
-            { new: true }
-        );
+    await newSubModule.save();
 
-        if (!updatedSubModule) {
-            return res.status(404).json({
-                status: 'error',
-                message: 'SubModule not found'
-            });
-        }
-        res.status(200).json({
-            status: 'success',
-            message: 'SubModule updated successfully',
-            data: updatedSubModule
-        });
-    } catch (err) {
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to update SubModule',
-            error: err.message
-        });
-    }
-};
+    res.status(201).json({
+      status: "success",
+      message: "SubModule created successfully with uploaded file and image",
+      data: newSubModule,
+    });
+  } catch (err) {
+    console.error("Error processing request:", err);
+    res.status(500).json({
+      status: "error",
+      message: "Failed to process request",
+      error: err.message,
+    });
+  }
+});
 
-// Delete a SubModule by ID
-const deleteSubModule = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const deletedSubModule = await SubModule.findByIdAndDelete(id);
-        if (!deletedSubModule) {
-            return res.status(404).json({
-                status: 'error',
-                message: 'SubModule not found'
-            });
-        }
-        res.status(200).json({
-            status: 'success',
-            message: 'SubModule deleted successfully'
-        });
-    } catch (err) {
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to delete SubModule',
-            error: err.message
-        });
-    }
-};
-
-// Add a lesson to a SubModule
-const addLessonToSubModule = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const lesson = req.body;
-        const subModule = await SubModule.findById(id);
-        if (!subModule) {
-            return res.status(404).json({
-                status: 'error',
-                message: 'SubModule not found'
-            });
-        }
-        subModule.lessons.push(lesson);
-        const updatedSubModule = await subModule.save();
-        res.status(201).json({
-            status: 'success',
-            message: 'Lesson added successfully',
-            data: updatedSubModule
-        });
-    } catch (err) {
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to add lesson',
-            error: err.message
-        });
-    }
-};
-
-// Remove a lesson from a SubModule
-const removeLessonFromSubModule = async (req, res) => {
-    try {
-        const { subModuleId, lessonId } = req.params;
-        const subModule = await SubModule.findById(subModuleId);
-        if (!subModule) {
-            return res.status(404).json({
-                status: 'error',
-                message: 'SubModule not found'
-            });
-        }
-        subModule.lessons = subModule.lessons.filter(lesson => lesson._id.toString() !== lessonId);
-        const updatedSubModule = await subModule.save();
-        res.status(200).json({
-            status: 'success',
-            message: 'Lesson removed successfully',
-            data: updatedSubModule
-        });
-    } catch (err) {
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to remove lesson',
-            error: err.message
-        });
-    }
-};
-
-// Export the controllers
-module.exports = {
-    createSubModule,
-    getAllSubModules,
-    getSubModuleById,
-    updateSubModule,
-    deleteSubModule,
-    addLessonToSubModule,
-    removeLessonFromSubModule
-};
+module.exports = router;
