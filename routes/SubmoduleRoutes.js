@@ -8,7 +8,7 @@ SubModuleRouter.get('/api/submodules', SubModuleR.getAllSubModules);
 SubModuleRouter.get('/api/submodules/:id', SubModuleR.getSubModuleById);
 SubModuleRouter.delete('/api/submodules/:id', SubModuleR.deleteSubModule);
 
-// New upload route- post and put and get, for everything to do with resources
+//post and put and get, for everything to do with resources
 SubModuleRouter.use('/api/v1/submodules', uploadSubModuleRouter); // Mount the upload route
 
 module.exports = SubModuleRouter;
