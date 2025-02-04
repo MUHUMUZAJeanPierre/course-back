@@ -61,41 +61,6 @@ const getSubModuleById = async (req, res) => {
     }
 };
 
-// Update a SubModule by ID
-const updateSubModule = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const imagePath = req.file ? req.file.path : req.body.image; // Use uploaded image or existing one
-
-        const updatedSubModule = await SubModule.findByIdAndUpdate(
-            id,
-            {
-                ...req.body,
-                image: imagePath
-            },
-            { new: true }
-        );
-
-        if (!updatedSubModule) {
-            return res.status(404).json({
-                status: 'error',
-                message: 'SubModule not found'
-            });
-        }
-        res.status(200).json({
-            status: 'success',
-            message: 'SubModule updated successfully',
-            data: updatedSubModule
-        });
-    } catch (err) {
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to update SubModule',
-            error: err.message
-        });
-    }
-};
-
 // Delete a SubModule by ID
 const deleteSubModule = async (req, res) => {
     try {
@@ -179,7 +144,6 @@ const removeLessonFromSubModule = async (req, res) => {
 module.exports = {
     getAllSubModules,
     getSubModuleById,
-    updateSubModule,
     deleteSubModule,
     addLessonToSubModule,
     removeLessonFromSubModule

@@ -157,4 +157,137 @@ router.post("/", upload.fields([{ name: "file" }, { name: "image" }]), async (re
   }
 });
 
+// PUT Route: Update SubModule
+router.put(
+  "/:id",
+  upload.fields([{ name: "file" }, { name: "image" }]),
+  async (req, res) => {
+    const { id } = req.params;
+    const { title, lessons } = req.body;
+    const { file, image } = req.files;
+
+    try {
+      // Check if SubModule exists
+      const existingSubModule = await SubModule.findById(id);
+      if (!existingSubModule) {
+        return res.status(404).json({
+          status: "error",
+          message: "SubModule not found",
+        });
+      }
+
+      let imageUrl = existingSubModule.image;
+      let updatedFileId = null;
+
+      // Upload new image to Cloudinary if provided
+      if (image && image[0]) {
+        imageUrl = await uploadImageToCloudinary(
+          image[0].buffer,
+          "submodule_images",
+          `submodule-${Date.now()}`
+        );
+      }
+
+      // Process new PDF file if provided
+      if (file && file[0] && file[0].mimetype.includes("pdf")) {
+        const pdfFile = file[0];
+        const cloudinaryFolder = `pdf_app/${pdfFile.originalname.split(".")[0]}`;
+
+        // Process and upload slides
+        const slideUrls = await processPdfSlides(pdfFile.buffer, cloudinaryFolder);
+
+        // Create a new file document
+        const fileDocument = new File({
+          originalName: pdfFile.originalname,
+          storedName: `${Date.now()}-${pdfFile.originalname}`,
+          slides: slideUrls,
+          totalSlides: slideUrls.length,
+          path: cloudinaryFolder,
+        });
+
+        await fileDocument.save();
+        updatedFileId = fileDocument._id; // Get the ID of the uploaded file
+      }
+
+      // Update the title if provided
+      if (title) {
+        existingSubModule.title = title;
+      }
+
+      if (lessons) {
+        let parsedLessons = JSON.parse(lessons).map((lesson, index) => {
+            let existingResources = existingSubModule.lessons[index]?.resources || [];
+    
+            return {
+                title: lesson.title,
+                description: lesson.description,
+                videoUrl: lesson.videoUrl || null,
+                resources: updatedFileId ? [updatedFileId.toString()] : existingResources,
+            };
+        });
+    
+        existingSubModule.lessons = parsedLessons;
+    }
+    
+
+      // Update image URL
+      existingSubModule.image = imageUrl;
+
+      // Validate and save the updated SubModule
+      await existingSubModule.validate();
+      await existingSubModule.save();
+      await existingSubModule.populate("lessons.resources");
+
+      res.status(200).json({
+        status: "success",
+        message: "SubModule updated successfully",
+        data: existingSubModule,
+      });
+    } catch (err) {
+      console.error("Update Error:", err);
+      res.status(500).json({
+        status: "error",
+        message: "Failed to update SubModule",
+        error: err.message,
+      });
+    }
+  }
+);
+
+// Get all files route
+router.get("/", async (req, res) => {
+  try {
+    const files = await File.find();
+    res.status(200).json(files);
+  } catch (err) {
+    console.error("Error fetching files:", err);
+    res.status(500).json({ error: "Failed to fetch files" });
+  }
+});
+
+router.delete("/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const file = await File.findById(id);
+    if (!file) {
+      return res.status(404).json({ error: "File not found" });
+    }
+
+    // Delete slides from Cloudinary
+    for (const slideUrl of file.slides) {
+      const publicId = slideUrl.split("/").slice(-2).join("/").split(".")[0];
+      await cloudinary.uploader.destroy(publicId, { resource_type: "image" });
+    }
+
+    // Remove the file from the database
+    await file.deleteOne();
+
+    res.status(200).json({ message: "File deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting file:", err);
+    res.status(500).json({ error: "Failed to delete file" });
+  }
+});
+
 module.exports = router;
