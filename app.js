@@ -8,6 +8,7 @@ const SubModuleRouter = require('./routes/SubmoduleRoutes');
 const ModuleRouter = require('./routes/ModuleRoutes');
 const CourseRouter = require('./routes/courseRoutes');
 const userRouter = require('./routes/userRoutes');
+const cors = require('cors');
 
 // Load environment variables
 dotenv.config();
@@ -38,6 +39,12 @@ app.use((req, res, next) => {
 
 // Database connection
 db.connect();
+
+
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true
+}));
 
 // Define Routes
 app.use('/', userRouter);
