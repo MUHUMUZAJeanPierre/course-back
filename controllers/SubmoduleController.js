@@ -4,7 +4,7 @@ const cloudinary = require("cloudinary").v2;
 const streamifier = require("streamifier");
 const { SubModule, File } = require("../models/CourseSubModuleSchema");
 const gm = require("gm").subClass({ imageMagick: true });
-
+const CourseModule = require('../models/CourseModule');
 const router = express.Router();
 const dotenv = require("dotenv");
 dotenv.config();
@@ -83,79 +83,169 @@ const processPdfSlides = (pdfBuffer, folder) => {
   });
 };
 
-// Unified API to Upload PDF, SubModule Image & Create SubModule
-router.post("/", upload.fields([{ name: "file" }, { name: "image" }]), async (req, res) => {
-  const { file, image } = req.files;
-  const { title, lessons } = req.body;
+router.post(
+  "/",
+  upload.fields([{ name: "file" }, { name: "image" }]),
+  async (req, res) => {
+    const { file, image } = req.files;
+    const { title, lessons, moduleId } = req.body;
 
-  if (!file || !file[0] || !file[0].mimetype.includes("pdf")) {
-    return res.status(400).json({ error: "Please upload a valid PDF file" });
-  }
+    if (!file || !file[0] || !file[0].mimetype.includes("pdf")) {
+      return res.status(400).json({ error: "Please upload a valid PDF file" });
+    }
 
-  const pdfFile = file[0]; // PDF file
-  const cloudinaryFolder = `pdf_app/${pdfFile.originalname.split(".")[0]}`;
+    const pdfFile = file[0]; // PDF file
+    const cloudinaryFolder = `pdf_app/${pdfFile.originalname.split(".")[0]}`;
 
-  try {
-    // Process and upload slides
-    const slideUrls = await processPdfSlides(pdfFile.buffer, cloudinaryFolder);
+    try {
+      // Process and upload slides
+      const slideUrls = await processPdfSlides(pdfFile.buffer, cloudinaryFolder);
 
-    // Save file metadata to database
-    const newFile = new File({
-      originalName: pdfFile.originalname,
-      storedName: `${Date.now()}-${pdfFile.originalname}`,
-      slides: slideUrls,
-      totalSlides: slideUrls.length,
-      path: cloudinaryFolder,
-    });
+      // Save file metadata to database
+      const newFile = new File({
+        originalName: pdfFile.originalname,
+        storedName: `${Date.now()}-${pdfFile.originalname}`,
+        slides: slideUrls,
+        totalSlides: slideUrls.length,
+        path: cloudinaryFolder,
+      });
 
-    await newFile.save();
+      await newFile.save();
 
-    // Check if SubModule with same title exists
-    const existingSubModule = await SubModule.findOne({ title });
-    if (existingSubModule) {
-      return res.status(400).json({
+      // Check if SubModule with the same title exists
+      const existingSubModule = await SubModule.findOne({ title });
+      if (existingSubModule) {
+        return res.status(400).json({
+          status: "error",
+          message: "A SubModule with this title already exists",
+        });
+      }
+
+      // Upload the SubModule image if provided
+      let imageUrl = null;
+      if (image && image[0]) {
+        imageUrl = await uploadImageToCloudinary(image[0].buffer, "submodule_images", `submodule-${Date.now()}`);
+      }
+
+      // Parse lessons and attach file as a resource
+      const parsedLessons = JSON.parse(lessons).map((lesson) => ({
+        title: lesson.title,
+        description: lesson.description,
+        videoUrl: lesson.videoUrl || null,
+        resources: [newFile._id], // Attach file as a resource
+      }));
+
+      // Create and save the new SubModule
+      const newSubModule = new SubModule({
+        title,
+        image: imageUrl, // Save image URL
+        lessons: parsedLessons,
+      });
+
+      const savedSubModule = await newSubModule.save();
+
+      // **Update the CourseModule to include the new SubModule**
+      const courseModule = await CourseModule.findById(moduleId);
+      if (!courseModule) {
+        return res.status(404).json({
+          status: "error",
+          message: "CourseModule not found.",
+        });
+      }
+
+      courseModule.submodules.push(savedSubModule._id);
+      await courseModule.save();
+
+      res.status(201).json({
+        status: "success",
+        message: "SubModule created and added to CourseModule successfully",
+        data: savedSubModule,
+      });
+    } catch (err) {
+      console.error("Error processing request:", err);
+      res.status(500).json({
         status: "error",
-        message: "A SubModule with this title already exists",
+        message: "Failed to process request",
+        error: err.message,
       });
     }
-
-    // Upload the SubModule image if provided
-    let imageUrl = null;
-    if (image && image[0]) {
-      imageUrl = await uploadImageToCloudinary(image[0].buffer, "submodule_images", `submodule-${Date.now()}`);
-    }
-
-    // Parse lessons and attach file as a resource
-    const parsedLessons = JSON.parse(lessons).map((lesson) => ({
-      title: lesson.title,
-      description: lesson.description,
-      videoUrl: lesson.videoUrl || null,
-      resources: [newFile._id], // Attach file as a resource
-    }));
-
-    // Create and save the new SubModule
-    const newSubModule = new SubModule({
-      title,
-      image: imageUrl, // Save image URL
-      lessons: parsedLessons,
-    });
-
-    await newSubModule.save();
-
-    res.status(201).json({
-      status: "success",
-      message: "SubModule created successfully with uploaded file and image",
-      data: newSubModule,
-    });
-  } catch (err) {
-    console.error("Error processing request:", err);
-    res.status(500).json({
-      status: "error",
-      message: "Failed to process request",
-      error: err.message,
-    });
   }
-});
+);
+
+
+// Unified API to Upload PDF, SubModule Image & Create SubModule
+// router.post("/", upload.fields([{ name: "file" }, { name: "image" }]), async (req, res) => {
+//   const { file, image } = req.files;
+//   const { title, lessons } = req.body;
+
+//   if (!file || !file[0] || !file[0].mimetype.includes("pdf")) {
+//     return res.status(400).json({ error: "Please upload a valid PDF file" });
+//   }
+
+//   const pdfFile = file[0]; // PDF file
+//   const cloudinaryFolder = `pdf_app/${pdfFile.originalname.split(".")[0]}`;
+
+//   try {
+//     // Process and upload slides
+//     const slideUrls = await processPdfSlides(pdfFile.buffer, cloudinaryFolder);
+
+//     // Save file metadata to database
+//     const newFile = new File({
+//       originalName: pdfFile.originalname,
+//       storedName: `${Date.now()}-${pdfFile.originalname}`,
+//       slides: slideUrls,
+//       totalSlides: slideUrls.length,
+//       path: cloudinaryFolder,
+//     });
+
+//     await newFile.save();
+
+//     // Check if SubModule with same title exists
+//     const existingSubModule = await SubModule.findOne({ title });
+//     if (existingSubModule) {
+//       return res.status(400).json({
+//         status: "error",
+//         message: "A SubModule with this title already exists",
+//       });
+//     }
+
+//     // Upload the SubModule image if provided
+//     let imageUrl = null;
+//     if (image && image[0]) {
+//       imageUrl = await uploadImageToCloudinary(image[0].buffer, "submodule_images", `submodule-${Date.now()}`);
+//     }
+
+//     // Parse lessons and attach file as a resource
+//     const parsedLessons = JSON.parse(lessons).map((lesson) => ({
+//       title: lesson.title,
+//       description: lesson.description,
+//       videoUrl: lesson.videoUrl || null,
+//       resources: [newFile._id], // Attach file as a resource
+//     }));
+
+//     // Create and save the new SubModule
+//     const newSubModule = new SubModule({
+//       title,
+//       image: imageUrl, // Save image URL
+//       lessons: parsedLessons,
+//     });
+
+//     await newSubModule.save();
+
+//     res.status(201).json({
+//       status: "success",
+//       message: "SubModule created successfully with uploaded file and image",
+//       data: newSubModule,
+//     });
+//   } catch (err) {
+//     console.error("Error processing request:", err);
+//     res.status(500).json({
+//       status: "error",
+//       message: "Failed to process request",
+//       error: err.message,
+//     });
+//   }
+// });
 
 // PUT Route: Update SubModule
 router.put(

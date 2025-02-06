@@ -3,19 +3,20 @@ const mongoose = require('mongoose');
 const SubModule = require('../models/CourseSubModuleSchema');
 const CourseModule = require('../models/CourseModule');
 const QuizSchema = require('../models/QuizSchema');
+const Course = require('../models/Course');
 const cloudinary = require('../utils/cloudinary');
 const multer = require('multer');
 const fs = require('fs');
 const upload = require('../config/multer');
 
-// Create a new CourseModule
 const createCourseModule = async (req, res) => {
     try {
+        const { title, description, submodules, quiz, courseId } = req.body;
 
-        if (!req.body.title) {
+        if (!title || !courseId) {
             return res.status(400).json({
                 status: "error",
-                message: "Title is required."
+                message: "Title and Course ID are required."
             });
         }
 
@@ -26,18 +27,32 @@ const createCourseModule = async (req, res) => {
             imageUrl = cloudinaryResult.secure_url;
         }
 
+        // Create the CourseModule
         const courseModule = new CourseModule({
-            title: req.body.title,
+            title,
             image: imageUrl || req.body.image,
-            description: req.body.description,
-            submodules: req.body.submodules || [],
-            quiz: req.body.quiz || null
+            description,
+            submodules: submodules || [],
+            quiz: quiz || null
         });
 
         const savedCourseModule = await courseModule.save();
+
+        // Find the Course and add this module to its modules array
+        const course = await Course.findById(courseId);
+        if (!course) {
+            return res.status(404).json({
+                status: "error",
+                message: "Course not found."
+            });
+        }
+
+        course.modules.push(savedCourseModule._id);
+        await course.save();
+
         res.status(201).json({
             status: "success",
-            message: "CourseModule created successfully",
+            message: "CourseModule created and added to Course successfully",
             data: savedCourseModule
         });
     } catch (err) {
@@ -48,7 +63,6 @@ const createCourseModule = async (req, res) => {
         });
     }
 };
-
 
 // Get all CourseModules
 const getAllCourseModules = async (req, res) => {
