@@ -76,7 +76,21 @@ const createCourse = async (req, res) => {
 // Get all Courses
 const getAllCourses = async (req, res) => {
     try {
-        const courses = await Course.find().populate('modules').populate('instructor').populate('enrolledStudents');
+        const courses = await Course.find()
+            .populate({
+                path: 'modules',
+                populate: {
+                    path: 'submodules',
+                    model: 'SubModule',
+                    populate: {
+                        path: 'lessons.resources',
+                        model: 'File' // Ensures that it populates from the File model
+                    }
+                }
+            })
+            .populate('instructor')
+            .populate('enrolledStudents');
+
         res.status(200).json({
             status: 'success',
             message: 'Courses retrieved successfully',
