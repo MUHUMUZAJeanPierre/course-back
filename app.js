@@ -41,11 +41,17 @@ app.use((req, res, next) => {
 db.connect();
 
 
+// app.use(cors({
+//   origin: ['http://localhost:5173','http://localhost:5174'],
+//   credentials: true
+// }));
 app.use(cors({
-  origin: ['http://localhost:5173','http://localhost:5174'],
-  credentials: true
-}));
-
+    origin: (origin, callback) => {
+      callback(null, true); // Allows all origins dynamically
+    },
+    credentials: true
+  }));
+  
 // Define Routes
 app.use('/', userRouter);
 app.use('/', SubModuleRouter);
