@@ -67,7 +67,17 @@ const createCourseModule = async (req, res) => {
 // Get all CourseModules
 const getAllCourseModules = async (req, res) => {
     try {
-        const courseModules = await CourseModule.find().populate('submodules');
+        const courseModules = await CourseModule.find()
+            .populate({
+                path: 'submodules',
+                populate: {
+                    path: 'lessons',
+                    populate: {
+                        path: 'resources'
+                    }
+                }
+            });
+
         res.status(200).json({
             status: 'success',
             message: 'CourseModules retrieved successfully',
@@ -86,13 +96,24 @@ const getAllCourseModules = async (req, res) => {
 const getCourseModuleById = async (req, res) => {
     try {
         const { id } = req.params;
-        const courseModule = await CourseModule.findById(id).populate('submodules');
+        const courseModule = await CourseModule.findById(id)
+            .populate({
+                path: 'submodules',
+                populate: {
+                    path: 'lessons',
+                    populate: {
+                        path: 'resources'
+                    }
+                }
+            });
+
         if (!courseModule) {
             return res.status(404).json({
                 status: 'error',
                 message: 'CourseModule not found'
             });
         }
+
         res.status(200).json({
             status: 'success',
             message: 'CourseModule retrieved successfully',
