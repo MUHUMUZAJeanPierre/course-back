@@ -109,7 +109,20 @@ const getAllCourses = async (req, res) => {
 const getCourseById = async (req, res) => {
     try {
         const { id } = req.params;
-        const course = await Course.findById(id).populate('modules').populate('instructor').populate('enrolledStudents');
+        const course = await Course.findById(id)
+            .populate({
+                path: 'modules',
+                populate: {
+                    path: 'submodules',
+                    model: 'SubModule',
+                    populate: {
+                        path: 'lessons.resources',
+                        model: 'File' // Ensures that it populates from the File model
+                    }
+                }
+            })
+            .populate('instructor')
+            .populate('enrolledStudents');
         if (!course) {
             return res.status(404).json({
                 status: 'error',
