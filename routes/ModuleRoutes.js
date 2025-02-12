@@ -13,12 +13,12 @@ const upload = require('../config/multer');
 ModuleRouter.post('/api/modules', upload.none(), createCourseModule);
 ModuleRouter.get('/api/modules', getAllCourseModules);
 ModuleRouter.get('/api/modules/:id', getCourseModuleById);
-ModuleRouter.put('/api/modules/:id', updateCourseModule);
+ModuleRouter.put('/api/modules/:id',upload.none(), updateCourseModule);
 ModuleRouter.delete('/api/modules/:id', deleteCourseModule);
 
 // Quiz routes
-ModuleRouter.post('/api/modules/:moduleId/quiz', addQuizToModule);
-ModuleRouter.put('/api/modules/:moduleId/quiz', updateModuleQuiz);
+ModuleRouter.post('/api/modules/:moduleId/quiz',upload.none(), addQuizToModule);
+ModuleRouter.put('/api/modules/:moduleId/quiz',upload.none(),  updateModuleQuiz);
 ModuleRouter.delete('/api/modules/:moduleId/quiz', deleteModuleQuiz);
 
 module.exports = ModuleRouter;
