@@ -1,4 +1,3 @@
-// controllers/QuizController.js
 const CourseModule = require('../models/CourseModule');
 
 exports.addQuizToModule = async (req, res) => {
@@ -10,7 +9,7 @@ exports.addQuizToModule = async (req, res) => {
         if (!title || !questions || !Array.isArray(questions) || questions.length === 0) {
             return res.status(400).json({
                 success: false,
-                message: 'Please provide quiz title and at least one question'
+                message: 'Please provide a quiz title and at least one question'
             });
         }
 
@@ -19,25 +18,22 @@ exports.addQuizToModule = async (req, res) => {
             q.question && 
             Array.isArray(q.options) && 
             q.options.length > 0 && 
-            q.correctAnswer &&
-            q.options.includes(q.correctAnswer)
+            Array.isArray(q.correctAnswer) && 
+            q.correctAnswer.length > 0 && 
+            q.correctAnswer.every(answer => q.options.includes(answer))
         );
 
         if (!isValidQuestions) {
             return res.status(400).json({
                 success: false,
-                message: 'Each question must have question text, options array, and a valid correct answer'
+                message: 'Each question must have a question text, an array of options, and an array of valid correct answers'
             });
         }
 
-        // Find and update the module
+        // Find and update the module with the quiz
         const updatedModule = await CourseModule.findByIdAndUpdate(
             moduleId,
-            {
-                $set: {
-                    quiz: { title, questions }
-                }
-            },
+            { $set: { quiz: { title, questions } } },
             { new: true, runValidators: true }
         );
 
@@ -50,6 +46,7 @@ exports.addQuizToModule = async (req, res) => {
 
         res.status(200).json({
             success: true,
+            message: 'Quiz added successfully',
             data: updatedModule
         });
 
@@ -71,7 +68,7 @@ exports.updateModuleQuiz = async (req, res) => {
         if (!title || !questions || !Array.isArray(questions) || questions.length === 0) {
             return res.status(400).json({
                 success: false,
-                message: 'Please provide quiz title and at least one question'
+                message: 'Please provide a quiz title and at least one question'
             });
         }
 
@@ -80,26 +77,22 @@ exports.updateModuleQuiz = async (req, res) => {
             q.question && 
             Array.isArray(q.options) && 
             q.options.length > 0 && 
-            q.correctAnswer &&
-            q.options.includes(q.correctAnswer)
+            Array.isArray(q.correctAnswer) && 
+            q.correctAnswer.length > 0 && 
+            q.correctAnswer.every(answer => q.options.includes(answer))
         );
 
         if (!isValidQuestions) {
             return res.status(400).json({
                 success: false,
-                message: 'Each question must have question text, options array, and a valid correct answer'
+                message: 'Each question must have a question text, an array of options, and an array of valid correct answers'
             });
         }
 
-        // Find and update the module
+        // Find and update the module quiz
         const updatedModule = await CourseModule.findByIdAndUpdate(
             moduleId,
-            {
-                $set: {
-                    'quiz.title': title,
-                    'quiz.questions': questions
-                }
-            },
+            { $set: { 'quiz.title': title, 'quiz.questions': questions } },
             { new: true, runValidators: true }
         );
 
@@ -112,6 +105,7 @@ exports.updateModuleQuiz = async (req, res) => {
 
         res.status(200).json({
             success: true,
+            message: 'Quiz updated successfully',
             data: updatedModule
         });
 
@@ -123,6 +117,7 @@ exports.updateModuleQuiz = async (req, res) => {
         });
     }
 };
+
 
 exports.deleteModuleQuiz = async (req, res) => {
     try {
