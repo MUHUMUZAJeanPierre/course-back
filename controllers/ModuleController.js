@@ -20,17 +20,9 @@ const createCourseModule = async (req, res) => {
             });
         }
 
-        // Upload image to Cloudinary if file exists
-        let imageUrl = null;
-        if (req.file) {
-            const cloudinaryResult = await cloudinary.uploader.upload(req.file.path);
-            imageUrl = cloudinaryResult.secure_url;
-        }
-
         // Create the CourseModule
         const courseModule = new CourseModule({
             title,
-            image: imageUrl || req.body.image,
             description,
             submodules: submodules || [],
             quiz: quiz || null
@@ -132,17 +124,9 @@ const getCourseModuleById = async (req, res) => {
 const updateCourseModule = async (req, res) => {
     try {
         const { id } = req.params;
-        let imageUrl = req.body.image;
-
-        // Upload new image if file exists
-        if (req.file) {
-            const cloudinaryResult = await cloudinary.uploader.upload(req.file.path);
-            imageUrl = cloudinaryResult.secure_url;
-        }
 
         const updatedCourseModule = await CourseModule.findByIdAndUpdate(
             id,
-            { ...req.body, image: imageUrl },
             { new: true }
         ).populate('submodules');
 

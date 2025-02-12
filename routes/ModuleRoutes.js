@@ -10,7 +10,7 @@ const { addQuizToModule, updateModuleQuiz, deleteModuleQuiz } = require('../cont
 const upload = require('../config/multer');
 
 // Module routes
-ModuleRouter.post('/api/modules', upload.single('image'), createCourseModule);
+ModuleRouter.post('/api/modules', upload.none(), createCourseModule);
 ModuleRouter.get('/api/modules', getAllCourseModules);
 ModuleRouter.get('/api/modules/:id', getCourseModuleById);
 ModuleRouter.put('/api/modules/:id', updateCourseModule);

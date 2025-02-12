@@ -85,9 +85,9 @@ const processPdfSlides = (pdfBuffer, folder) => {
 
 router.post(
   "/",
-  upload.fields([{ name: "file" }, { name: "image" }]),
+  upload.fields([{ name: "file" }]),
   async (req, res) => {
-    const { file, image } = req.files;
+    const { file } = req.files;
     const { title, lessons, moduleId } = req.body;
 
     if (!file || !file[0] || !file[0].mimetype.includes("pdf")) {
@@ -128,12 +128,6 @@ router.post(
         });
       }
 
-      // Upload the SubModule image if provided
-      let imageUrl = null;
-      if (image && image[0]) {
-        imageUrl = await uploadImageToCloudinary(image[0].buffer, "submodule_images", `submodule-${Date.now()}`);
-      }
-
       // Parse lessons and attach file as a resource
       const parsedLessons = JSON.parse(lessons).map((lesson) => ({
         title: lesson.title,
@@ -145,7 +139,6 @@ router.post(
       // Create and save the new SubModule
       const newSubModule = new SubModule({
         title,
-        image: imageUrl, // Save image URL
         lessons: parsedLessons,
       });
 
@@ -182,11 +175,11 @@ router.post(
 // PUT Route: Update SubModule
 router.put(
   "/:id",
-  upload.fields([{ name: "file" }, { name: "image" }]),
+  upload.fields([{ name: "file" }]),
   async (req, res) => {
     const { id } = req.params;
     const { title, lessons } = req.body;
-    const { file, image } = req.files;
+    const { file } = req.files;
 
     try {
       // Check if SubModule exists
@@ -198,17 +191,7 @@ router.put(
         });
       }
 
-      let imageUrl = existingSubModule.image;
       let updatedFileId = null;
-
-      // Upload new image to Cloudinary if provided
-      if (image && image[0]) {
-        imageUrl = await uploadImageToCloudinary(
-          image[0].buffer,
-          "submodule_images",
-          `submodule-${Date.now()}`
-        );
-      }
 
       // Process new PDF file if provided
       if (file && file[0] && file[0].mimetype.includes("pdf")) {
@@ -250,10 +233,6 @@ router.put(
     
         existingSubModule.lessons = parsedLessons;
     }
-    
-
-      // Update image URL
-      existingSubModule.image = imageUrl;
 
       // Validate and save the updated SubModule
       await existingSubModule.validate();

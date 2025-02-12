@@ -23,10 +23,10 @@ const createCourse = async (req, res) => {
         const { title, description, instructor, modules, enrolledStudents, category, level } = req.body;
 
         // Check for required fields
-        if (!title || !description || !instructor || !req.file) {
+        if (!title || !description || !req.file) {
             return res.status(400).json({ 
                 status: 'error', 
-                message: 'Title, description, instructor, and image are required.' 
+                message: 'Title, description, and image are required.' 
             });
         }
 
