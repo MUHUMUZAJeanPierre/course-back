@@ -8,6 +8,7 @@ const SubModuleRouter = require('./routes/SubmoduleRoutes');
 const ModuleRouter = require('./routes/ModuleRoutes');
 const CourseRouter = require('./routes/courseRoutes');
 const userRouter = require('./routes/userRoutes');
+const ProgressRouter = require('./routes/progressRoutes')
 const cors = require('cors');
 
 // Load environment variables
@@ -58,6 +59,7 @@ app.use('/', SubModuleRouter);
 app.use('/', ModuleRouter);
 app.use('/', CourseRouter);
 app.use('/', authRoutes);
+app.use('/',ProgressRouter);
 
 // Start Server
 const PORT = process.env.PORT || 5000;
