@@ -3,7 +3,6 @@ const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const streamifier = require("streamifier");
 const { SubModule, File } = require("../models/CourseSubModuleSchema");
-const gm = require("gm").subClass({ imageMagick: true });
 const CourseModule = require('../models/CourseModule');
 const router = express.Router();
 const dotenv = require("dotenv");
@@ -12,74 +11,25 @@ dotenv.config();
 // Multer configuration for file uploads (memory storage)
 const upload = multer({ storage: multer.memoryStorage() });
 
-
-// Upload image to Cloudinary
-const uploadImageToCloudinary = (buffer, folder, fileName) => {
+const uploadPdfToCloudinary = (buffer, folder, fileName) => {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
         folder: folder,
         public_id: fileName,
-        resource_type: "image",
+        resource_type: "raw",
+        format: 'pdf',  // Specify the format as PDF
+        flags: "attachment",  // This tells Cloudinary to serve it inline rather than as attachment
       },
       (err, result) => {
         if (err) reject(err);
-        else resolve(result.secure_url);
-      }
-    );
-    streamifier.createReadStream(buffer).pipe(uploadStream);
-  });
-};
-
-// Upload slide to Cloudinary
-const uploadSlideToCloudinary = (buffer, folder, fileName) => {
-  return new Promise((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        folder: folder,
-        public_id: fileName,
-        resource_type: "image",
-      },
-      (err, result) => {
-        if (err) reject(err);
-        else resolve(result.secure_url);
-      }
-    );
-    streamifier.createReadStream(buffer).pipe(uploadStream);
-  });
-};
-
-// Extract slides from PDF and upload to Cloudinary
-const processPdfSlides = (pdfBuffer, folder) => {
-  return new Promise((resolve, reject) => {
-    gm(pdfBuffer).toBuffer("PDF", async (err, buffer) => {
-      if (err) return reject(err);
-
-      const slideUrls = [];
-      gm(buffer).identify("%p ", async (err, pages) => {
-        if (err) return reject(err);
-
-        const totalSlides = pages.split(" ").filter((p) => p).length;
-
-        for (let i = 0; i < totalSlides; i++) {
-          gm(buffer, `[${i}]`)
-            .toBuffer("PNG", async (err, slideBuffer) => {
-              if (err) return reject(err);
-
-              const slideUrl = await uploadSlideToCloudinary(
-                slideBuffer,
-                folder,
-                `slide${i + 1}`
-              );
-              slideUrls.push(slideUrl);
-
-              if (slideUrls.length === totalSlides) {
-                resolve(slideUrls);
-              }
-            });
+        else {
+          const pdfUrl = result.secure_url.replace('/raw/', '/raw/');
+          resolve(pdfUrl);
         }
-      });
-    });
+      }
+    );
+    streamifier.createReadStream(buffer).pipe(uploadStream);
   });
 };
 
@@ -89,31 +39,39 @@ router.post(
   async (req, res) => {
     const { file } = req.files;
     const { title, lessons, moduleId } = req.body;
+    console.log(req.files)
 
-    if (!file || !file[0] || !file[0].mimetype.includes("pdf")) {
+    if (!file || !file[0]) {
+      return res.status(400).json({ error: "No file uploaded" });
+  }
+  
+  if (file[0].mimetype !== 'application/pdf') {
       return res.status(400).json({ error: "Please upload a valid PDF file" });
-    }
+  }
 
     if (!title || !moduleId) {
       return res.status(400).json({
-          status: "error",
-          message: "Title and module ID are required."
+        status: "error",
+        message: "Title and module ID are required."
       });
-  }
+    }
 
-    const pdfFile = file[0]; // PDF file
+    const pdfFile = file[0];
     const cloudinaryFolder = `pdf_app/${pdfFile.originalname.split(".")[0]}`;
 
     try {
-      // Process and upload slides
-      const slideUrls = await processPdfSlides(pdfFile.buffer, cloudinaryFolder);
+      // Upload PDF directly
+      const pdfUrl = await uploadPdfToCloudinary(
+        pdfFile.buffer,
+        cloudinaryFolder,
+        pdfFile.originalname.split(".")[0]
+      );
 
       // Save file metadata to database
       const newFile = new File({
         originalName: pdfFile.originalname,
         storedName: `${Date.now()}-${pdfFile.originalname}`,
-        slides: slideUrls,
-        totalSlides: slideUrls.length,
+        pdfUrl: pdfUrl,
         path: cloudinaryFolder,
       });
 
@@ -133,7 +91,7 @@ router.post(
         title: lesson.title,
         description: lesson.description,
         videoUrl: lesson.videoUrl || null,
-        resources: [newFile._id], // Attach file as a resource
+        resources: [newFile._id],
       }));
 
       // Create and save the new SubModule
@@ -144,7 +102,7 @@ router.post(
 
       const savedSubModule = await newSubModule.save();
 
-      // **Update the CourseModule to include the new SubModule**
+      // Update the CourseModule to include the new SubModule
       const courseModule = await CourseModule.findById(moduleId);
       if (!courseModule) {
         return res.status(404).json({
@@ -172,7 +130,6 @@ router.post(
   }
 );
 
-// PUT Route: Update SubModule
 router.put(
   "/:id",
   upload.fields([{ name: "file" }]),
@@ -182,7 +139,6 @@ router.put(
     const { file } = req.files;
 
     try {
-      // Check if SubModule exists
       const existingSubModule = await SubModule.findById(id);
       if (!existingSubModule) {
         return res.status(404).json({
@@ -193,48 +149,48 @@ router.put(
 
       let updatedFileId = null;
 
-      // Process new PDF file if provided
-      if (file && file[0] && file[0].mimetype.includes("pdf")) {
+      if (file && file[0] && file[0].mimetype === 'application/pdf') {
         const pdfFile = file[0];
         const cloudinaryFolder = `pdf_app/${pdfFile.originalname.split(".")[0]}`;
 
-        // Process and upload slides
-        const slideUrls = await processPdfSlides(pdfFile.buffer, cloudinaryFolder);
+        // Upload new PDF
+        const pdfUrl = await uploadPdfToCloudinary(
+          pdfFile.buffer,
+          cloudinaryFolder,
+          pdfFile.originalname.split(".")[0]
+        );
 
-        // Create a new file document
+        // Create new file document
         const fileDocument = new File({
           originalName: pdfFile.originalname,
           storedName: `${Date.now()}-${pdfFile.originalname}`,
-          slides: slideUrls,
-          totalSlides: slideUrls.length,
+          pdfUrl: pdfUrl,
           path: cloudinaryFolder,
         });
 
         await fileDocument.save();
-        updatedFileId = fileDocument._id; // Get the ID of the uploaded file
+        updatedFileId = fileDocument._id;
       }
 
-      // Update the title if provided
       if (title) {
         existingSubModule.title = title;
       }
 
       if (lessons) {
         let parsedLessons = JSON.parse(lessons).map((lesson, index) => {
-            let existingResources = existingSubModule.lessons[index]?.resources || [];
-    
-            return {
-                title: lesson.title,
-                description: lesson.description,
-                videoUrl: lesson.videoUrl || null,
-                resources: updatedFileId ? [updatedFileId.toString()] : existingResources,
-            };
+          let existingResources = existingSubModule.lessons[index]?.resources || [];
+          
+          return {
+            title: lesson.title,
+            description: lesson.description,
+            videoUrl: lesson.videoUrl || null,
+            resources: updatedFileId ? [updatedFileId.toString()] : existingResources,
+          };
         });
-    
-        existingSubModule.lessons = parsedLessons;
-    }
 
-      // Validate and save the updated SubModule
+        existingSubModule.lessons = parsedLessons;
+      }
+
       await existingSubModule.validate();
       await existingSubModule.save();
       await existingSubModule.populate("lessons.resources");
@@ -275,11 +231,9 @@ router.delete("/:id", async (req, res) => {
       return res.status(404).json({ error: "File not found" });
     }
 
-    // Delete slides from Cloudinary
-    for (const slideUrl of file.slides) {
-      const publicId = slideUrl.split("/").slice(-2).join("/").split(".")[0];
-      await cloudinary.uploader.destroy(publicId, { resource_type: "image" });
-    }
+    // Delete PDF from Cloudinary
+    const publicId = file.pdfUrl.split("/").slice(-2).join("/").split(".")[0];
+    await cloudinary.uploader.destroy(publicId, { resource_type: "raw" });
 
     // Remove the file from the database
     await file.deleteOne();

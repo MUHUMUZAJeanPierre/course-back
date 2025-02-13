@@ -1,12 +1,11 @@
 const mongoose = require("mongoose");
 
 const FileSchema = new mongoose.Schema({
-  originalName: { type: String, required: true },
-  storedName: { type: String, required: true },
-  slides: { type: [String], required: true }, // Array of slide URLs
-  totalSlides: { type: Number, required: true }, // Number of slides
-  path: { type: String, required: true }, // Cloudinary folder path
-});
+    originalName: { type: String, required: true },
+    storedName: { type: String, required: true },
+    pdfUrl: { type: String, required: true }, // URL to the stored PDF
+    path: { type: String, required: true }, // Cloudinary folder path
+  });
 
 const SubModuleSchema = new mongoose.Schema({
     title: { 
