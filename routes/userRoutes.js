@@ -1,10 +1,11 @@
 const express = require('express');
 const userRouter = express.Router();
-const {registerUser, loginUser} = require('../controllers/userController');
+const {registerUser, loginUser, getAllUsers} = require('../controllers/userController');
 const  authenticate  = require('../middlewares/authMiddleware');
 
-userRouter.post('/register', registerUser);
-userRouter.post('/login', loginUser);
+userRouter.post('/api/register', registerUser);
+userRouter.post('/api/login', loginUser);
+userRouter.get('/api/users', getAllUsers);
 userRouter.get('/protected', authenticate, (req, res) => {
     res.status(200).json({
         status: 'success',

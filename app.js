@@ -9,6 +9,7 @@ const ModuleRouter = require('./routes/ModuleRoutes');
 const CourseRouter = require('./routes/courseRoutes');
 const userRouter = require('./routes/userRoutes');
 const ProgressRouter = require('./routes/progressRoutes')
+const EnrollmentRouter = require('./routes/EnrollmentRoutes');
 const cors = require('cors');
 
 // Load environment variables
@@ -59,7 +60,8 @@ app.use('/', SubModuleRouter);
 app.use('/', ModuleRouter);
 app.use('/', CourseRouter);
 app.use('/', authRoutes);
-app.use('/',ProgressRouter);
+app.use('/', ProgressRouter);
+app.use('/', EnrollmentRouter);
 
 // Start Server
 const PORT = process.env.PORT || 5000;
