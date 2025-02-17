@@ -54,8 +54,10 @@ const UserSchema = new mongoose.Schema({
                 {
                     moduleId: { type: mongoose.Schema.Types.ObjectId, ref: 'CourseModule' },
                     score: { type: Number },
+                    attempts: { type: Number, default: 0 }, // Added field
+                    lastAttempt: { type: Date } // Added field
                 },
-            ],
+            ],            
         },
     ],
     googleProfile: {
