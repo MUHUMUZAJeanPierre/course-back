@@ -11,6 +11,7 @@ const userRouter = require('./routes/userRoutes');
 const ProgressRouter = require('./routes/progressRoutes')
 const EnrollmentRouter = require('./routes/EnrollmentRoutes');
 const cors = require('cors');
+const setupSwagger = require('./utils/Swagger')
 
 // Load environment variables
 dotenv.config();
@@ -32,6 +33,7 @@ app.use(
 );
 app.use(passport.initialize());
 app.use(passport.session());
+setupSwagger(app);
 
 // Debug Middleware (optional)
 app.use((req, res, next) => {
@@ -67,4 +69,5 @@ app.use('/', EnrollmentRouter);
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    console.log(`Swagger docs available at http://localhost:${PORT}/api-docs`);
 });
