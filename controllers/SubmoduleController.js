@@ -8,8 +8,28 @@ const router = express.Router();
 const dotenv = require("dotenv");
 dotenv.config();
 
-// Multer configuration for file uploads (memory storage)
 const upload = multer({ storage: multer.memoryStorage() });
+const { PDFDocument } = require('pdf-lib');
+
+const splitAndUploadPdf = async (buffer, folder, fileName) => {
+    const pdfDoc = await PDFDocument.load(buffer);
+    const numPages = pdfDoc.getPageCount();
+    const pageUrls = [];
+
+    for (let i = 0; i < numPages; i++) {
+        const newPdf = await PDFDocument.create();
+        const [copiedPage] = await newPdf.copyPages(pdfDoc, [i]);
+        newPdf.addPage(copiedPage);
+
+        const newPdfBytes = await newPdf.save(); // Convert to Buffer
+        const newPdfBuffer = Buffer.from(newPdfBytes);
+
+        const pageUrl = await uploadPdfToCloudinary(newPdfBuffer, folder, `${fileName}_page${i + 1}`);
+        pageUrls.push(pageUrl);
+    }
+
+    return pageUrls;
+};
 
 const uploadPdfToCloudinary = (buffer, folder, fileName) => {
   return new Promise((resolve, reject) => {
@@ -68,14 +88,17 @@ router.post(
       );
 
       // Save file metadata to database
-      const newFile = new File({
-        originalName: pdfFile.originalname,
-        storedName: `${Date.now()}-${pdfFile.originalname}`,
-        pdfUrl: pdfUrl,
-        path: cloudinaryFolder,
-      });
+      const pdfUrls = await splitAndUploadPdf(pdfFile.buffer, cloudinaryFolder, pdfFile.originalname.split(".")[0]);
 
+      const newFile = new File({
+          originalName: pdfFile.originalname,
+          storedName: `${Date.now()}-${pdfFile.originalname}`,
+          pdfUrls: pdfUrls,  // Store array of URLs
+          path: cloudinaryFolder,
+      });
+      
       await newFile.save();
+      
 
       // Check if SubModule with the same title exists
       const existingSubModule = await SubModule.findOne({ title });
@@ -161,13 +184,15 @@ router.put(
         );
 
         // Create new file document
-        const fileDocument = new File({
-          originalName: pdfFile.originalname,
-          storedName: `${Date.now()}-${pdfFile.originalname}`,
-          pdfUrl: pdfUrl,
-          path: cloudinaryFolder,
-        });
+        const pdfUrls = await splitAndUploadPdf(pdfFile.buffer, cloudinaryFolder, pdfFile.originalname.split(".")[0]);
 
+        const fileDocument = new File({
+            originalName: pdfFile.originalname,
+            storedName: `${Date.now()}-${pdfFile.originalname}`,
+            pdfUrls: pdfUrls,  // Store array of URLs
+            path: cloudinaryFolder,
+        });
+        
         await fileDocument.save();
         updatedFileId = fileDocument._id;
       }
