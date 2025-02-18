@@ -65,39 +65,6 @@ const completeModule = async (req, res) => {
     }
 };
 
-// Update quiz score with retry limit and cooldown period
-// const updateQuizScore = async (req, res) => {
-//     try {
-//         const { userId, courseId, moduleId, score } = req.body;
-//         const user = await User.findById(userId);
-
-//         if (!user) {
-//             return res.status(404).json({ message: 'User not found', status: false });
-//         }
-
-//         const courseProgress = user.courses.find(course => course.courseId.toString() === courseId);
-//         if (!courseProgress) {
-//             return res.status(400).json({ message: 'Course not found in user progress', status: false });
-//         }
-
-//         const existingQuizScore = courseProgress.quizScores.find(quiz => quiz.moduleId.toString() === moduleId);
-//         if (existingQuizScore) {
-//             if (existingQuizScore.attempts >= 2 && existingQuizScore.lastAttempt && (Date.now() - new Date(existingQuizScore.lastAttempt).getTime()) < 10 * 60 * 1000) {
-//                 return res.status(403).json({ message: 'Maximum attempts reached. Try again after 10 minutes.', status: false });
-//             }
-//             existingQuizScore.score = score;
-//             existingQuizScore.attempts = (existingQuizScore.attempts || 0) + 1;
-//             existingQuizScore.lastAttempt = new Date();
-//         } else {
-//             courseProgress.quizScores.push({ moduleId, score, attempts: 1, lastAttempt: new Date() });
-//         }
-
-//         await user.save();
-//         res.status(200).json({ message: 'Quiz score updated', status: true });
-//     } catch (error) {
-//         res.status(500).json({ message: error.message, status: false });
-//     }
-// };
 const updateQuizScore = async (req, res) => {
     try {
         const { userId, courseId, moduleId, score } = req.body;
