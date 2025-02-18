@@ -257,7 +257,7 @@ router.delete("/:id", async (req, res) => {
     }
 
     // Delete PDF from Cloudinary
-    const publicId = file.pdfUrl.split("/").slice(-2).join("/").split(".")[0];
+    const publicId = file.pdfUrls.split("/").slice(-2).join("/").split(".")[0];
     await cloudinary.uploader.destroy(publicId, { resource_type: "raw" });
 
     // Remove the file from the database
