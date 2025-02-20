@@ -42,6 +42,7 @@ const UserSchema = new mongoose.Schema({
             completedModules: [
                 {
                     moduleId: { type: mongoose.Schema.Types.ObjectId, ref: 'CourseModule' },
+                    completedAt: { type: Date },
                     completedLessons: [
                         {
                             lessonId: { type: mongoose.Schema.Types.ObjectId, ref: 'CourseSubModule' },

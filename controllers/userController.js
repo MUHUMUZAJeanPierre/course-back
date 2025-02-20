@@ -57,10 +57,40 @@ const loginUser = async (req, res) => {
 
 const getAllUsers = async (req, res) => {
     try {
-        const users = await User.find().select('-password'); // Exclude password for security reasons
+        const users = await User.find()
+            .select('-password')
+            .populate('courses.courseId')
+            .populate('courses.completedModules.moduleId');
+
+        const usersWithProgress = users.map(user => {
+            const updatedCourses = user.courses
+                .filter(course => course.courseId) // Ensure courseId is not null
+                .map(course => {
+                    const totalModules = Array.isArray(course.courseId.modules) ? course.courseId.modules.length : 0;
+                    const completedModules = course.completedModules.length;
+                    const progress = totalModules > 0 ? (completedModules / totalModules) * 100 : 0; 
+
+                    return {
+                        courseId: course.courseId._id,
+                        courseName: course.courseId.name,
+                        totalModules,
+                        completedModules,
+                        progress: progress.toFixed(2) + "%"
+                    };
+                });
+
+            return {
+                _id: user._id,
+                username: user.username,
+                email: user.email,
+                role: user.role,
+                courses: updatedCourses
+            };
+        });
+
         res.status(200).json({
             message: 'Users retrieved successfully',
-            data: users,
+            data: usersWithProgress,
             status: true
         });
     } catch (error) {

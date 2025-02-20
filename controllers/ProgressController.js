@@ -54,12 +54,34 @@ const completeModule = async (req, res) => {
             return res.status(400).json({ message: 'Course not found in user progress', status: false });
         }
 
+        // Check if quiz score meets minimum requirement
         const moduleQuizScore = courseProgress.quizScores.find(quiz => quiz.moduleId.toString() === moduleId);
         if (!moduleQuizScore || moduleQuizScore.score < 80) {
             return res.status(400).json({ message: 'Module not completed: Quiz score below 80', status: false });
         }
 
-        res.status(200).json({ message: 'Module completed', status: true });
+        // Find the module progress object
+        const moduleProgress = courseProgress.completedModules.find(
+            module => module.moduleId.toString() === moduleId
+        );
+        console.log(moduleProgress)
+
+        if (moduleProgress) {
+            // Module already exists in completedModules, so just update it if needed
+            moduleProgress.completedAt = new Date();
+        } else {
+            // Add the module to completedModules array
+            courseProgress.completedModules.push({
+                moduleId,
+                completedAt: new Date(),
+                completedLessons: [] // Initialize with empty lessons array
+            });
+        }
+
+        // Save the updated user document
+        await user.save();
+        
+        res.status(200).json({ message: 'Module completed successfully', status: true });
     } catch (error) {
         res.status(500).json({ message: error.message, status: false });
     }
