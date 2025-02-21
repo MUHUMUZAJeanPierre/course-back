@@ -10,7 +10,7 @@ const sendVerificationEmail = async (email, token) => {
             },
         });
 
-        const verificationLink = `http://localhost:3000/verify-email?token=${token}`;
+        const verificationLink = `https://course-back-2-00rq.onrender.com/verify-email?token=${token}`;
         const mailOptions = {
             from: process.env.EMAIL,
             to: email,
