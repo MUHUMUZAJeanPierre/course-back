@@ -54,18 +54,39 @@ const completeModule = async (req, res) => {
             return res.status(400).json({ message: 'Course not found in user progress', status: false });
         }
 
+        // Check if quiz score meets minimum requirement
         const moduleQuizScore = courseProgress.quizScores.find(quiz => quiz.moduleId.toString() === moduleId);
         if (!moduleQuizScore || moduleQuizScore.score < 80) {
             return res.status(400).json({ message: 'Module not completed: Quiz score below 80', status: false });
         }
 
-        res.status(200).json({ message: 'Module completed', status: true });
+        // Find the module progress object
+        const moduleProgress = courseProgress.completedModules.find(
+            module => module.moduleId.toString() === moduleId
+        );
+        console.log(moduleProgress)
+
+        if (moduleProgress) {
+            // Module already exists in completedModules, so just update it if needed
+            moduleProgress.completedAt = new Date();
+        } else {
+            // Add the module to completedModules array
+            courseProgress.completedModules.push({
+                moduleId,
+                completedAt: new Date(),
+                completedLessons: [] // Initialize with empty lessons array
+            });
+        }
+
+        // Save the updated user document
+        await user.save();
+        
+        res.status(200).json({ message: 'Module completed successfully', status: true });
     } catch (error) {
         res.status(500).json({ message: error.message, status: false });
     }
 };
 
-// Update quiz score with retry limit and cooldown period
 const updateQuizScore = async (req, res) => {
     try {
         const { userId, courseId, moduleId, score } = req.body;
@@ -81,15 +102,33 @@ const updateQuizScore = async (req, res) => {
         }
 
         const existingQuizScore = courseProgress.quizScores.find(quiz => quiz.moduleId.toString() === moduleId);
+        const now = Date.now();
+
         if (existingQuizScore) {
-            if (existingQuizScore.attempts >= 2 && existingQuizScore.lastAttempt && (Date.now() - new Date(existingQuizScore.lastAttempt).getTime()) < 10 * 60 * 1000) {
+            // Ensure attempts exist
+            existingQuizScore.attempts = existingQuizScore.attempts || 0;
+
+            // Enforce attempt limit and cooldown
+            if (
+                existingQuizScore.attempts >= 2 && 
+                existingQuizScore.lastAttempt &&
+                (now - new Date(existingQuizScore.lastAttempt).getTime()) < 10 * 60 * 1000
+            ) {
                 return res.status(403).json({ message: 'Maximum attempts reached. Try again after 10 minutes.', status: false });
             }
+
+            // Update score, attempts, and lastAttempt timestamp
             existingQuizScore.score = score;
-            existingQuizScore.attempts = (existingQuizScore.attempts || 0) + 1;
+            existingQuizScore.attempts += 1;
             existingQuizScore.lastAttempt = new Date();
         } else {
-            courseProgress.quizScores.push({ moduleId, score, attempts: 1, lastAttempt: new Date() });
+            // If no previous attempt, create new quiz score entry
+            courseProgress.quizScores.push({
+                moduleId,
+                score,
+                attempts: 1,
+                lastAttempt: new Date()
+            });
         }
 
         await user.save();
@@ -98,5 +137,6 @@ const updateQuizScore = async (req, res) => {
         res.status(500).json({ message: error.message, status: false });
     }
 };
+
 
 module.exports = { completeLesson, completeModule, updateQuizScore };
