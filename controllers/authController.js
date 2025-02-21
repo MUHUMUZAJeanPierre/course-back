@@ -21,7 +21,7 @@ const googleCallback = async (req, res) => {
       );
   
       // Redirect to frontend with token in query params
-      res.redirect(`http://localhost:5000/auth/callback?token=${token}`);
+      res.redirect(`https://course-back-2-00rq.onrender.com/auth/callback?token=${token}`);
     } catch (error) {
       console.error("Google Callback Error:", error);
       res.redirect("/");
