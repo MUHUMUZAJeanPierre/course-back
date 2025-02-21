@@ -16,12 +16,12 @@ const googleCallback = async (req, res) => {
   
       // Generate JWT token for authentication
       const token = jwt.sign(
-        { id: req.user.id, email: req.user.email, name: req.user.displayName },
+        { id: req.user.id },
         process.env.JWT_SECRET
       );
   
       // Redirect to frontend with token in query params
-      res.redirect(`https://course-back-2-00rq.onrender.com/auth/callback?token=${token}`);
+      res.redirect(`http://localhost:3000/auth/callback?token=${token}`);
     } catch (error) {
       console.error("Google Callback Error:", error);
       res.redirect("/");
