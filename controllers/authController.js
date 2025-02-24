@@ -2,7 +2,7 @@ const User = require('../models/User');
 const { sendVerificationEmail } = require('../service/emailService');
 
 const loginPage = (req, res) => {
-    res.send('<a href="/auth/google">Login with Google</a>');
+    res.send('<a href="http://localhost:3000/dashboard">Login with Google</a>');
 };
 
 // const googleCallback = (req, res) => {
