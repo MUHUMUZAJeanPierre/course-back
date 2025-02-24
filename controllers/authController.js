@@ -5,9 +5,28 @@ const loginPage = (req, res) => {
     res.send('<a href="/auth/google">Login with Google</a>');
 };
 
-const googleCallback = (req, res) => {
-    res.redirect('/profile');
-};
+// const googleCallback = (req, res) => {
+//     res.redirect('/profile');
+// };
+const googleCallback = async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.redirect("/");
+      }
+  
+      // Generate JWT token for authentication
+      const token = jwt.sign(
+        { id: req.user.id },
+        process.env.JWT_SECRET
+      );
+  
+      // Redirect to frontend with token in query params
+      res.redirect(`https://course-back-2-00rq.onrender.com/auth/callback?token=${token}`);
+    } catch (error) {
+      console.error("Google Callback Error:", error);
+      res.redirect("/");
+    }
+  };
 
 const profilePage = async (req, res) => {
     if (!req.user || !req.user.isVerified) {
