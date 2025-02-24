@@ -24,19 +24,19 @@ passport.use(
                         username: profile.displayName,
                         email: profile.emails[0].value,
                         password: crypto.randomBytes(16).toString('hex'),
-                        isVerified: false,
+                        isVerified: true,
                         verificationToken: token,
                     });
 
                     await newUser.save();
-                    await sendVerificationEmail(newUser.email, token);
+                    // await sendVerificationEmail(newUser.email, token);
 
                     return done(null, newUser);
                 }
 
-                if (!user.isVerified) {
-                    return done(null, false, { message: 'Please verify your email to continue' });
-                }
+                // if (!user.isVerified) {
+                //     return done(null, false, { message: 'Please verify your email to continue' });
+                // }
 
                 return done(null, user);
             } catch (error) {
