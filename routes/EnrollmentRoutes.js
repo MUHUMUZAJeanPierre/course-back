@@ -69,8 +69,8 @@ const { enrollStudent, unenrollStudent } = require('../controllers/EnrollmentCon
  *         description: Server error
  */
 
-EnrollmentRouter.post('/api/enroll',upload.none(), enrollStudent);
-EnrollmentRouter.post('/api/unenroll',upload.none(), unenrollStudent);
+EnrollmentRouter.post('/api/enroll/:userId/:courseId', enrollStudent);
+EnrollmentRouter.post('/api/unenroll/:userId/:courseId', unenrollStudent);
 
 module.exports = EnrollmentRouter;
  

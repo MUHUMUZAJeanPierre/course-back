@@ -6,9 +6,8 @@ const multer = require("multer");
 
 const enrollStudent = async (req, res) => {
     try {
-        const { userId, courseId } = req.body;
+        const { userId, courseId } = req.params;
 
-        console.log(req.body)
         const course = await Course.findById(courseId);
         if (!course) {
             return res.status(404).json({ message: 'Course not found' });
@@ -17,10 +16,6 @@ const enrollStudent = async (req, res) => {
         const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
-        }
-
-        if (!course && !user) {
-            return res.status(404).json({ message: 'Course and User not found' });
         }
 
         // Prevent duplicate enrollment
@@ -42,7 +37,7 @@ const enrollStudent = async (req, res) => {
 
 const unenrollStudent = async (req, res) => {
     try {
-        const { userId, courseId } = req.body;
+        const { userId, courseId } = req.params;
 
         const course = await Course.findById(courseId);
         if (!course) {
@@ -52,10 +47,6 @@ const unenrollStudent = async (req, res) => {
         const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
-        }
-
-        if (!course && !user) {
-            return res.status(404).json({ message: 'Course and User not found' });
         }
 
         // Remove student from course enrolledStudents array
