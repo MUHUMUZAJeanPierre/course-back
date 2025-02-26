@@ -2,7 +2,7 @@ const express = require('express');
 const ModuleRouter = express.Router();
 
 // Import module controllers
-const { createCourseModule, getAllCourseModules, getCourseModuleById, updateCourseModule, deleteCourseModule } = require('../controllers/ModuleController');
+const { createCourseModule, getAllCourseModules, getCourseModuleById, updateCourseModule, deleteCourseModule, getCourseModulesByCourseId } = require('../controllers/ModuleController');
 
 // Import quiz controllers
 const { addQuizToModule, updateModuleQuiz, deleteModuleQuiz } = require('../controllers/quizController');
@@ -316,6 +316,7 @@ const upload = require('../config/multer');
 ModuleRouter.post('/api/modules', upload.none(), createCourseModule);
 ModuleRouter.get('/api/modules', getAllCourseModules);
 ModuleRouter.get('/api/modules/:id', getCourseModuleById);
+ModuleRouter.get('/api/coursemodules/:id', getCourseModulesByCourseId);
 ModuleRouter.put('/api/modules/:id',upload.none(), updateCourseModule);
 ModuleRouter.delete('/api/modules/:id', deleteCourseModule);
 

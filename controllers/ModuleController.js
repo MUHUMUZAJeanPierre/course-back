@@ -120,6 +120,47 @@ const getCourseModuleById = async (req, res) => {
     }
 };
 
+const getCourseModulesByCourseId = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Check if the course exists
+        const course = await Course.findById(id);
+        console.log(course)
+        if (!course) {
+            return res.status(404).json({
+                status: "error",
+                message: "Course not found."
+            });
+        }
+
+        // Find modules associated with the course
+        const courseModules = await CourseModule.find({ _id: { $in: course.modules } })
+            .populate({
+                path: 'submodules',
+                populate: {
+                    path: 'lessons',
+                    populate: {
+                        path: 'resources'
+                    }
+                }
+            });
+
+        res.status(200).json({
+            status: "success",
+            message: "CourseModules retrieved successfully",
+            data: courseModules
+        });
+    } catch (err) {
+        res.status(500).json({
+            status: "error",
+            message: "Failed to retrieve CourseModules",
+            error: err.message
+        });
+    }
+};
+
+
 // Update a CourseModule by ID
 const updateCourseModule = async (req, res) => {
     try {
@@ -179,6 +220,7 @@ module.exports = {
     createCourseModule,
     getAllCourseModules,
     getCourseModuleById,
+    getCourseModulesByCourseId,
     updateCourseModule,
     deleteCourseModule
 };
