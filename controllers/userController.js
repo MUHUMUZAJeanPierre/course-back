@@ -32,6 +32,7 @@ const registerUser = async (req, res) => {
         res.status(201).json({
             message: 'User registered. A verification email has been sent.',
             status: true,
+            data: user
         });
     } catch (error) {
         res.status(500).json({ message: error.message, status: false });
@@ -73,7 +74,7 @@ const getAllUsers = async (req, res) => {
 
         const usersWithProgress = users.map(user => {
             const updatedCourses = user.courses
-                .filter(course => course.courseId) // Ensure courseId is not null
+                .filter(course => course.courseId) 
                 .map(course => {
                     const totalModules = Array.isArray(course.courseId.modules) ? course.courseId.modules.length : 0;
                     const completedModules = course.completedModules.length;

@@ -10,7 +10,7 @@ const loginPage = (req, res) => {
     }
 
     if (!req.user.isVerified) {
-        return res.redirect('http://localhost:3000/verify-email?message=Please verify your email before accessing the dashboard.');
+        return res.redirect('http://localhost:3000/verify-email?message=Please');
     }
 
     res.redirect('http://localhost:3000/courses');
