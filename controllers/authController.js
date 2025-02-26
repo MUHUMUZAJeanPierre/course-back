@@ -1,8 +1,19 @@
 const User = require('../models/User');
 const { sendVerificationEmail } = require('../service/emailService');
 
+// const loginPage = (req, res) => {
+//     res.redirect('http://localhost:3000/dashboard');
+// };
 const loginPage = (req, res) => {
-    res.send('<a href="/auth/google">Login with Google</a>');
+    if (!req.user) {
+        return res.redirect('http://localhost:3000/login?error=Unauthorized');
+    }
+
+    if (!req.user.isVerified) {
+        return res.redirect('http://localhost:3000/verify-email?message=Please verify your email before accessing the dashboard.');
+    }
+
+    res.redirect('http://localhost:3000/courses');
 };
 
 // const googleCallback = (req, res) => {

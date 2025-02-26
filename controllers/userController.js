@@ -1,41 +1,55 @@
 const User = require('../models/User');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const { sendVerificationEmail } = require('../service/emailService');
 
 const registerUser = async (req, res) => {
     try {
         const { username, email, password, role } = req.body;
         const existingUser = await User.findOne({ email });
+
         if (existingUser) {
-            return res.status(400).json({ message: 'User with this email already exists', status:false});
+            return res.status(400).json({ message: 'User with this email already exists', status: false });
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        const user = new User({ 
-            username, 
-            email, 
-            password: hashedPassword, 
-            role: role || 'student'
+        const verificationToken = crypto.randomBytes(32).toString('hex');
+
+        const user = new User({
+            username,
+            email,
+            password: hashedPassword,
+            role: role || 'student',
+            isVerified: false,
+            verificationToken,
         });
-        const savedUser = await user.save();
+
+        await user.save();
+
+        await sendVerificationEmail(user.email, verificationToken);
+
         res.status(201).json({
-            message: 'User created successfully',
-            data: savedUser,
-            status: true
-        })
+            message: 'User registered. A verification email has been sent.',
+            status: true,
+        });
     } catch (error) {
         res.status(500).json({ message: error.message, status: false });
-        
     }
-}
+};
 
 
 const loginUser = async (req, res) => {
     try {
-        const {email, password} = req.body;
+        const { email, password } = req.body;
         const user = await User.findOne({ email });
+
         if (!user) {
             return res.status(404).json({ message: 'User not found', status: false });
+        }
+
+        if (!user.isVerified) {
+            return res.status(403).json({ message: 'Please verify your email before logging in.', status: false });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
@@ -44,16 +58,11 @@ const loginUser = async (req, res) => {
         }
 
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
-        res.status(200).json({
-            message: 'Logged in successfully',
-            token,
-            status: true
-        });
+        res.status(200).json({ message: 'Logged in successfully', token, status: true });
     } catch (error) {
         res.status(500).json({ message: error.message, status: false });
-        
     }
-}
+};
 
 const getAllUsers = async (req, res) => {
     try {
@@ -97,10 +106,29 @@ const getAllUsers = async (req, res) => {
         res.status(500).json({ message: error.message, status: false });
     }
 };
+const deleteUser = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Ensure the user exists
+        const user = await User.findById(id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found', status: false });
+        }
+
+        await User.findByIdAndDelete(id);
+        res.status(200).json({ message: 'User deleted successfully', status: true });
+
+    } catch (error) {
+        res.status(500).json({ message: error.message, status: false });
+    }
+};
+
 
 module.exports = {
     registerUser,
     loginUser,
     getAllUsers,
+    deleteUser,
 };
 
