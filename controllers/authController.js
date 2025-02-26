@@ -13,7 +13,7 @@ const loginPage = (req, res) => {
         return res.redirect('http://localhost:3000/verify-email?message=Please verify your email before accessing the dashboard.');
     }
 
-    res.redirect('http://localhost:3000/dashboard');
+    res.redirect('http://localhost:3000/courses');
 };
 
 // const googleCallback = (req, res) => {
