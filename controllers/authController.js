@@ -10,7 +10,7 @@ const loginPage = (req, res) => {
     }
 
     if (!req.user.isVerified) {
-        return res.redirect('http://localhost:3000/verify-email?message=Please verify your email before accessing the dashboard.');
+        return res.redirect('http://localhost:3000/verify-email?message=Please');
     }
 
     res.redirect('http://localhost:3000/courses');
@@ -31,6 +31,16 @@ const googleCallback = async (req, res) => {
         process.env.JWT_SECRET
       );
   
+      res.status(200).json({
+        status: "success",
+        message: "User authenticated successfully",
+        token,
+        user: {
+            id: req.user.id,
+            name: req.user.name,
+            email: req.user.email
+        }
+    });
       // Redirect to frontend with token in query params
       res.redirect(`https://course-back-2-00rq.onrender.com/auth/callback?token=${token}`);
     } catch (error) {
@@ -60,15 +70,29 @@ const verifyEmail = async (req, res) => {
         await user.save();
 
         res.send('Email verified successfully. You can now log in.');
+
+        res.status(200).json({
+            status: "success",
+            message: "Email verified successfully. You can now log in."
+        });
     } catch (error) {
         console.error('Error verifying email:', error.message);
         res.status(500).send('Server error');
+        res.status(500).json({
+            status: "error",
+            message: "Server error while verifying email"
+        });
     }
 };
 
 const logout = async (req, res, next) => {
     try {
         await req.logout();
+        res.clearCookie("token");
+        res.status(200).json({
+            status: "success",
+            message: "Logged out successfully"
+        });
         res.redirect('/');
     } catch (err) {
         next(err);
