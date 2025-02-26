@@ -1,7 +1,6 @@
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const User = require('../models/User');
-const { sendVerificationEmail } = require('../service/emailService');
 const crypto = require('crypto');
 const dotenv = require('dotenv');
 dotenv.config();
@@ -29,14 +28,8 @@ passport.use(
                     });
 
                     await newUser.save();
-                    // await sendVerificationEmail(newUser.email, token);
-
                     return done(null, newUser);
                 }
-
-                // if (!user.isVerified) {
-                //     return done(null, false, { message: 'Please verify your email to continue' });
-                // }
 
                 return done(null, user);
             } catch (error) {

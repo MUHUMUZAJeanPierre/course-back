@@ -38,7 +38,6 @@ const registerUser = async (req, res) => {
     }
 };
 
-
 const loginUser = async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -57,12 +56,43 @@ const loginUser = async (req, res) => {
             return res.status(400).json({ message: 'Invalid credentials', status: false });
         }
 
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
-        res.status(200).json({ message: 'Logged in successfully', token, status: true });
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+        res.status(200).json({ 
+            message: 'Logged in successfully', 
+            token, 
+            user,
+            status: true 
+        });
     } catch (error) {
         res.status(500).json({ message: error.message, status: false });
     }
 };
+
+// const loginUser = async (req, res) => {
+//     try {
+//         const { email, password } = req.body;
+//         const user = await User.findOne({ email });
+
+//         if (!user) {
+//             return res.status(404).json({ message: 'User not found', status: false });
+//         }
+
+//         if (!user.isVerified) {
+//             return res.status(403).json({ message: 'Please verify your email before logging in.', status: false });
+//         }
+
+//         const isMatch = await bcrypt.compare(password, user.password);
+//         if (!isMatch) {
+//             return res.status(400).json({ message: 'Invalid credentials', status: false });
+//         }
+
+//         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+//         res.status(200).json({ message: 'Logged in successfully', token, status: true });
+//     } catch (error) {
+//         res.status(500).json({ message: error.message, status: false });
+//     }
+// };
 
 const getAllUsers = async (req, res) => {
     try {
