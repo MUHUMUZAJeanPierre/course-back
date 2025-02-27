@@ -1,6 +1,6 @@
 const express = require('express');
 const userRouter = express.Router();
-const {registerUser, loginUser, getAllUsers, deleteUser} = require('../controllers/userController');
+const {registerUser, loginUser, getAllUsers, deleteUser, getUserById} = require('../controllers/userController');
 const  authenticate  = require('../middlewares/authMiddleware');
 
 /**
@@ -111,6 +111,7 @@ const  authenticate  = require('../middlewares/authMiddleware');
 userRouter.post('/api/register', registerUser);
 userRouter.post('/api/login', loginUser);
 userRouter.get('/api/users', getAllUsers);
+userRouter.get('/api/user/:id', getUserById);
 userRouter.delete('/api/user/:id', deleteUser);
 
 userRouter.get('/protected', authenticate, (req, res) => {

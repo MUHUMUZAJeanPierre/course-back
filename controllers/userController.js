@@ -70,31 +70,6 @@ const loginUser = async (req, res) => {
     }
 };
 
-// const loginUser = async (req, res) => {
-//     try {
-//         const { email, password } = req.body;
-//         const user = await User.findOne({ email });
-
-//         if (!user) {
-//             return res.status(404).json({ message: 'User not found', status: false });
-//         }
-
-//         if (!user.isVerified) {
-//             return res.status(403).json({ message: 'Please verify your email before logging in.', status: false });
-//         }
-
-//         const isMatch = await bcrypt.compare(password, user.password);
-//         if (!isMatch) {
-//             return res.status(400).json({ message: 'Invalid credentials', status: false });
-//         }
-
-//         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
-//         res.status(200).json({ message: 'Logged in successfully', token, status: true });
-//     } catch (error) {
-//         res.status(500).json({ message: error.message, status: false });
-//     }
-// };
-
 const getAllUsers = async (req, res) => {
     try {
         const users = await User.find()
@@ -155,11 +130,58 @@ const deleteUser = async (req, res) => {
     }
 };
 
+const getUserById = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Find user by ID, exclude password, and populate course details
+        const user = await User.findById(id)
+            .select('-password')
+            .populate('courses.courseId')
+            .populate('courses.completedModules.moduleId');
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found', status: false });
+        }
+
+        // Process user courses and calculate progress
+        const updatedCourses = user.courses
+            .filter(course => course.courseId) 
+            .map(course => {
+                const totalModules = Array.isArray(course.courseId.modules) ? course.courseId.modules.length : 0;
+                const completedModules = course.completedModules.length;
+                const progress = totalModules > 0 ? (completedModules / totalModules) * 100 : 0; 
+
+                return {
+                    courseId: course.courseId._id,
+                    courseName: course.courseId.name,
+                    totalModules,
+                    completedModules,
+                    progress: progress.toFixed(2) + "%"
+                };
+            });
+
+        res.status(200).json({
+            message: 'User retrieved successfully',
+            data: {
+                _id: user._id,
+                username: user.username,
+                email: user.email,
+                role: user.role,
+                courses: updatedCourses
+            },
+            status: true
+        });
+
+    } catch (error) {
+        res.status(500).json({ message: error.message, status: false });
+    }
+};
 
 module.exports = {
     registerUser,
     loginUser,
     getAllUsers,
+    getUserById,
     deleteUser,
 };
-
