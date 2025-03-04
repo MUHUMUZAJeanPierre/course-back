@@ -12,6 +12,10 @@ const SubModuleSchema = new mongoose.Schema({
         type: String, 
         required: true 
     },
+    isCompleted: {
+        type: Boolean,
+        default: false,
+    },
     lessons: [
         {
             title: { 
