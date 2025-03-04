@@ -85,9 +85,45 @@ const getAllCourseModules = async (req, res) => {
 };
 
 // Get a single CourseModule by ID
+// const getCourseModuleById = async (req, res) => {
+//     try {
+//         const { id } = req.params;
+//         const courseModule = await CourseModule.findById(id)
+//             .populate({
+//                 path: 'submodules',
+//                 populate: {
+//                     path: 'lessons',
+//                     populate: {
+//                         path: 'resources'
+//                     }
+//                 }
+//             });
+
+//         if (!courseModule) {
+//             return res.status(404).json({
+//                 status: 'error',
+//                 message: 'CourseModule not found'
+//             });
+//         }
+
+//         res.status(200).json({
+//             status: 'success',
+//             message: 'CourseModule retrieved successfully',
+//             data: courseModule
+//         });
+//     } catch (err) {
+//         res.status(500).json({
+//             status: 'error',
+//             message: 'Failed to retrieve CourseModule',
+//             error: err.message
+//         });
+//     }
+// };
 const getCourseModuleById = async (req, res) => {
     try {
         const { id } = req.params;
+
+        // Find the course module
         const courseModule = await CourseModule.findById(id)
             .populate({
                 path: 'submodules',
@@ -106,10 +142,16 @@ const getCourseModuleById = async (req, res) => {
             });
         }
 
+        // Find the course that contains this module
+        const course = await Course.findOne({ modules: id });
+
         res.status(200).json({
             status: 'success',
             message: 'CourseModule retrieved successfully',
-            data: courseModule
+            data: {
+                ...courseModule.toObject(),
+                courseId: course ? course._id : null // Include courseId if found
+            }
         });
     } catch (err) {
         res.status(500).json({
@@ -119,6 +161,7 @@ const getCourseModuleById = async (req, res) => {
         });
     }
 };
+
 
 const getCourseModulesByCourseId = async (req, res) => {
     try {
