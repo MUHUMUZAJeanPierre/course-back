@@ -270,4 +270,21 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
+router.patch("/:id/complete", async (req, res) => {
+  try {
+      const subModule = await SubModule.findById(req.params.id);
+      
+      if (!subModule) {
+          return res.status(404).json({ message: "SubModule not found" });
+      }
+      
+      subModule.isCompleted = !subModule.isCompleted;
+      await subModule.save();
+      
+      res.json({ message: "SubModule status updated", subModule });
+  } catch (error) {
+      res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
 module.exports = router;
